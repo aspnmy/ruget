@@ -8,22 +8,16 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
 
 jobs:
+  # ── Fast feedback (ubuntu only) ──
   check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo check --workspace --all-targets
-
-  test:
-    needs: check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test --workspace
 
   clippy:
     needs: check
@@ -44,14 +38,74 @@ jobs:
           components: rustfmt
       - run: cargo fmt --all -- --check
 
-  build-release:
-    needs: [test, clippy, fmt]
+  test:
+    needs: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo build --release
-      - uses: actions/upload-artifact@v4
+      - run: cargo test --workspace
+
+  # ── Multi-platform build matrix ──
+  build:
+    needs: [clippy, fmt, test]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: ruget-linux-x86_64
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            artifact: ruget-linux-x86_64-musl
+            extra_deps: |
+              sudo apt-get update && sudo apt-get install -y musl-tools
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact: ruget-linux-aarch64
+            extra_deps: |
+              sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu qemu-user
+
+          # macOS
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact: ruget-macos-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: ruget-macos-aarch64
+
+          # Windows
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: ruget-windows-x86_64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install rust toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          name: ruget-linux-x86_64
-          path: target/release/ruget*
+          targets: ${{ matrix.target }}
+
+      - name: Install extra deps
+        if: matrix.extra_deps
+        run: ${{ matrix.extra_deps }}
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Strip (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: strip target/${{ matrix.target }}/release/ruget* || true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            target/${{ matrix.target }}/release/ruget*
+            !target/${{ matrix.target }}/release/ruget.d
