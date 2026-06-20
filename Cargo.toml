@@ -1,0 +1,31 @@
+[package]
+name = "ruget"
+version = "0.1.0"
+edition = "2021"
+description = "Rust GitHub API client — CLI + MCP dual-mode"
+
+[[bin]]
+name = "ruget"
+path = "src/main.rs"
+
+[[bin]]
+name = "ruget-mcp"
+path = "src/main_mcp.rs"
+
+[dependencies]
+ureq = { version = "2", features = ["native-tls", "json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+clap = { version = "4", features = ["derive", "env"] }
+thiserror = "2"
+base64 = "0.22"
+
+[dev-dependencies]
+assert-json-diff = "2"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
