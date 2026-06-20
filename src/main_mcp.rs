@@ -1,7 +1,7 @@
 //! MCP Server — JSON-RPC over stdio.
 //! Minimal implementation supporting the MCP 2024-11-05 protocol.
 
-use ruget::{client::GitHubClient, models::ToolResult};
+use ruget::{client, client::GitHubClient, models, models::ToolResult};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]

@@ -47,37 +47,37 @@ impl GitHubClient {
     }
 
     fn get<T: DeserializeOwned>(&self, path: &str) -> Result<T, ureq::Error> {
-        self.agent
+        let resp = self.agent
             .get(&format!("{API_BASE}{path}"))
             .set("Authorization", &self.auth_header())
             .set("Accept", "application/vnd.github+json")
             .set("X-GitHub-Api-Version", "2022-11-28")
-            .call()?
-            .into_json()
+            .call()?;
+        Ok(resp.into_json()?)
     }
 
     fn post<T: DeserializeOwned>(&self, path: &str, body: &impl serde::Serialize) -> Result<T, ureq::Error> {
         let json = serde_json::to_string(body).unwrap_or_default();
-        self.agent
+        let resp = self.agent
             .post(&format!("{API_BASE}{path}"))
             .set("Authorization", &self.auth_header())
             .set("Accept", "application/vnd.github+json")
             .set("X-GitHub-Api-Version", "2022-11-28")
             .set("Content-Type", "application/json")
-            .send_string(&json)?
-            .into_json()
+            .send_string(&json)?;
+        Ok(resp.into_json()?)
     }
 
     fn put<T: DeserializeOwned>(&self, path: &str, body: &impl serde::Serialize) -> Result<T, ureq::Error> {
         let json = serde_json::to_string(body).unwrap_or_default();
-        self.agent
+        let resp = self.agent
             .put(&format!("{API_BASE}{path}"))
             .set("Authorization", &self.auth_header())
             .set("Accept", "application/vnd.github+json")
             .set("X-GitHub-Api-Version", "2022-11-28")
             .set("Content-Type", "application/json")
-            .send_string(&json)?
-            .into_json()
+            .send_string(&json)?;
+        Ok(resp.into_json()?)
     }
 
     fn get_raw(&self, path: &str) -> Result<serde_json::Value, ureq::Error> {
@@ -235,7 +235,7 @@ impl GitHubClient {
     // ── User API ──
 
     /// Get authenticated user info.
-    pub fn get_user(&self) -> Result<Serde_json::Value, ureq::Error> {
+    pub fn get_user(&self) -> Result<serde_json::Value, ureq::Error> {
         self.get_raw("/user")
     }
 
@@ -265,11 +265,12 @@ impl GitHubClient {
 
         if let Some(b) = body {
             let json = serde_json::to_string(b).unwrap_or_default();
-            req.set("Content-Type", "application/json")
-                .send_string(&json)?
-                .into_json()
+            let resp = req.set("Content-Type", "application/json")
+                .send_string(&json)?;
+            Ok(resp.into_json()?)
         } else {
-            req.call()?.into_json()
+            let resp = req.call()?;
+            Ok(resp.into_json()?)
         }
     }
 }
@@ -286,12 +287,7 @@ impl Default for GitHubClient {
 pub fn format_error(e: &ureq::Error) -> String {
     match e {
         ureq::Error::Status(code, resp) => {
-            let body = resp.to_string();
-            if let Ok(err) = serde_json::from_str::<ApiError>(&body) {
-                format!("HTTP {code}: {}", err.message)
-            } else {
-                format!("HTTP {code}: {body}")
-            }
+            format!("HTTP {code}: {}", resp.status_text())
         }
         ureq::Error::Transport(t) => {
             let msg = t.to_string();

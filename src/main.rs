@@ -4,7 +4,7 @@ mod cli;
 
 use clap::Parser;
 use cli::{Cli, Commands};
-use ruget::{client::GitHubClient, models};
+use ruget::{client, client::GitHubClient, models};
 
 fn main() {
     let cli = Cli::parse();
