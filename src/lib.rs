@@ -1,3 +1,4 @@
+#![allow(clippy::result_large_err)] // ureq::Error is the natural error type for a ureq wrapper lib
 //! ruget — Rust GitHub API client
 //!
 //! CLI + MCP dual-mode:
