@@ -16,8 +16,15 @@ fn main() {
 
     match &cli.command {
         Commands::Search { kind } => match kind {
-            cli::SearchKind::Repos { q, page, per_page, sort, order } => {
-                match client.search_repositories(q, *page, *per_page, sort.as_deref(), Some(order)) {
+            cli::SearchKind::Repos {
+                q,
+                page,
+                per_page,
+                sort,
+                order,
+            } => {
+                match client.search_repositories(q, *page, *per_page, sort.as_deref(), Some(order))
+                {
                     Ok(result) => {
                         println!("Found {} repositories (page {})", result.total_count, page);
                         for repo in &result.items {
@@ -38,57 +45,84 @@ fn main() {
                     Ok(result) => {
                         println!("Found {} code matches", result.total_count);
                         for m in &result.items {
-                            let repo = m.repository.as_ref().map(|r| r.full_name.as_str()).unwrap_or("?");
+                            let repo = m
+                                .repository
+                                .as_ref()
+                                .map(|r| r.full_name.as_str())
+                                .unwrap_or("?");
                             println!("  {}  →  {}  ({})", repo, m.path, m.html_url);
                         }
                     }
                     Err(e) => eprintln!("Error: {}", client::format_error(&e)),
                 }
             }
-            cli::SearchKind::Issues { q, page, per_page, sort } => {
-                match client.search_issues(q, *page, *per_page, sort.as_deref(), None) {
-                    Ok(result) => {
-                        println!("Found {} issues/PRs", result.total_count);
-                        for item in &result.items {
-                            println!(
-                                "  #{:<6} [{}] {}  ({})",
-                                item.number,
-                                item.state,
-                                item.title,
-                                item.html_url
-                            );
-                        }
+            cli::SearchKind::Issues {
+                q,
+                page,
+                per_page,
+                sort,
+            } => match client.search_issues(q, *page, *per_page, sort.as_deref(), None) {
+                Ok(result) => {
+                    println!("Found {} issues/PRs", result.total_count);
+                    for item in &result.items {
+                        println!(
+                            "  #{:<6} [{}] {}  ({})",
+                            item.number, item.state, item.title, item.html_url
+                        );
                     }
-                    Err(e) => eprintln!("Error: {}", client::format_error(&e)),
                 }
-            }
+                Err(e) => eprintln!("Error: {}", client::format_error(&e)),
+            },
         },
         Commands::Issue { action } => match action {
-            cli::IssueAction::Create { owner, repo, title, body, labels, assignees } => {
+            cli::IssueAction::Create {
+                owner,
+                repo,
+                title,
+                body,
+                labels,
+                assignees,
+            } => {
                 let req = models::CreateIssueRequest {
                     title: title.clone(),
                     body: body.clone(),
-                    labels: labels.as_ref().map(|l| l.split(',').map(|s| s.trim().to_string()).collect()),
-                    assignees: assignees.as_ref().map(|a| a.split(',').map(|s| s.trim().to_string()).collect()),
+                    labels: labels
+                        .as_ref()
+                        .map(|l| l.split(',').map(|s| s.trim().to_string()).collect()),
+                    assignees: assignees
+                        .as_ref()
+                        .map(|a| a.split(',').map(|s| s.trim().to_string()).collect()),
                 };
                 match client.create_issue(owner, repo, &req) {
                     Ok(issue) => println!("Created issue #{}: {}", issue.number, issue.html_url),
                     Err(e) => eprintln!("Error: {}", client::format_error(&e)),
                 }
             }
-            cli::IssueAction::List { owner, repo, state, page, labels } => {
-                match client.list_issues(owner, repo, state, *page, 30, labels.as_deref()) {
-                    Ok(issues) => {
-                        for issue in &issues {
-                            println!("  #{:<6} [{}] {}", issue.number, issue.state, issue.title);
-                        }
+            cli::IssueAction::List {
+                owner,
+                repo,
+                state,
+                page,
+                labels,
+            } => match client.list_issues(owner, repo, state, *page, 30, labels.as_deref()) {
+                Ok(issues) => {
+                    for issue in &issues {
+                        println!("  #{:<6} [{}] {}", issue.number, issue.state, issue.title);
                     }
-                    Err(e) => eprintln!("Error: {}", client::format_error(&e)),
                 }
-            }
+                Err(e) => eprintln!("Error: {}", client::format_error(&e)),
+            },
         },
         Commands::Pr { action } => match action {
-            cli::PrAction::Create { owner, repo, title, head, base, body, draft } => {
+            cli::PrAction::Create {
+                owner,
+                repo,
+                title,
+                head,
+                base,
+                body,
+                draft,
+            } => {
                 let req = models::CreatePRRequest {
                     title: title.clone(),
                     head: head.clone(),
@@ -106,7 +140,12 @@ fn main() {
             }
         },
         Commands::File { action } => match action {
-            cli::FileAction::Get { owner, repo, path, branch } => {
+            cli::FileAction::Get {
+                owner,
+                repo,
+                path,
+                branch,
+            } => {
                 match client.get_file(owner, repo, path, branch.as_deref()) {
                     Ok(file) => {
                         if let Some(ref content) = file.content {
@@ -126,12 +165,16 @@ fn main() {
             }
         },
         Commands::Api { method, path, data } => {
-            let body: Option<serde_json::Value> = data.as_ref().and_then(|d| serde_json::from_str(d).ok());
+            let body: Option<serde_json::Value> =
+                data.as_ref().and_then(|d| serde_json::from_str(d).ok());
             match client.api(method, path, body.as_ref()) {
-                Ok(resp) => println!("{}", serde_json::to_string_pretty(&resp).unwrap_or_default()),
+                Ok(resp) => println!(
+                    "{}",
+                    serde_json::to_string_pretty(&resp).unwrap_or_default()
+                ),
                 Err(e) => eprintln!("Error: {}", client::format_error(&e)),
             }
-        },
+        }
         Commands::Whoami => match client.get_user() {
             Ok(user) => {
                 let login = user["login"].as_str().unwrap_or("?");

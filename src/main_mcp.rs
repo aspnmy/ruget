@@ -122,7 +122,10 @@ fn handle_tool_call(client: &GitHubClient, req: JsonRpcRequest) {
     };
 
     let tool_name = params["name"].as_str().unwrap_or("");
-    let args = params.get("arguments").cloned().unwrap_or(serde_json::Value::Null);
+    let args = params
+        .get("arguments")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
 
     let result = match tool_name {
         "github_api" => tool_github_api(client, &args),
@@ -238,10 +241,12 @@ fn tool_create_issue(client: &GitHubClient, args: &serde_json::Value) -> ToolRes
     let owner = args["owner"].as_str().unwrap_or("");
     let repo = args["repo"].as_str().unwrap_or("");
 
-    let labels: Option<Vec<String>> = args["labels"].as_str()
+    let labels: Option<Vec<String>> = args["labels"]
+        .as_str()
         .map(|l| l.split(',').map(|s| s.trim().to_string()).collect());
 
-    let assignees: Option<Vec<String>> = args["assignees"].as_str()
+    let assignees: Option<Vec<String>> = args["assignees"]
+        .as_str()
         .map(|a| a.split(',').map(|s| s.trim().to_string()).collect());
 
     let req = models::CreateIssueRequest {

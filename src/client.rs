@@ -20,8 +20,8 @@ impl GitHubClient {
     /// Token is read from `GITHUB_TOKEN` or `GITHUB_PERSONAL_ACCESS_TOKEN` env.
     /// Panics if no token is found.
     pub fn new() -> Self {
-        let token = resolve_token()
-            .expect("GITHUB_TOKEN or GITHUB_PERSONAL_ACCESS_TOKEN env not set");
+        let token =
+            resolve_token().expect("GITHUB_TOKEN or GITHUB_PERSONAL_ACCESS_TOKEN env not set");
         let agent = ureq::AgentBuilder::new()
             .timeout(Duration::from_secs(TIMEOUT_SECS))
             .user_agent(USER_AGENT)
@@ -47,7 +47,8 @@ impl GitHubClient {
     }
 
     fn get<T: DeserializeOwned>(&self, path: &str) -> Result<T, ureq::Error> {
-        let resp = self.agent
+        let resp = self
+            .agent
             .get(&format!("{API_BASE}{path}"))
             .set("Authorization", &self.auth_header())
             .set("Accept", "application/vnd.github+json")
@@ -56,9 +57,14 @@ impl GitHubClient {
         Ok(resp.into_json()?)
     }
 
-    fn post<T: DeserializeOwned>(&self, path: &str, body: &impl serde::Serialize) -> Result<T, ureq::Error> {
+    fn post<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        body: &impl serde::Serialize,
+    ) -> Result<T, ureq::Error> {
         let json = serde_json::to_string(body).unwrap_or_default();
-        let resp = self.agent
+        let resp = self
+            .agent
             .post(&format!("{API_BASE}{path}"))
             .set("Authorization", &self.auth_header())
             .set("Accept", "application/vnd.github+json")
@@ -68,9 +74,14 @@ impl GitHubClient {
         Ok(resp.into_json()?)
     }
 
-    fn put<T: DeserializeOwned>(&self, path: &str, body: &impl serde::Serialize) -> Result<T, ureq::Error> {
+    fn put<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        body: &impl serde::Serialize,
+    ) -> Result<T, ureq::Error> {
         let json = serde_json::to_string(body).unwrap_or_default();
-        let resp = self.agent
+        let resp = self
+            .agent
             .put(&format!("{API_BASE}{path}"))
             .set("Authorization", &self.auth_header())
             .set("Accept", "application/vnd.github+json")
@@ -95,7 +106,10 @@ impl GitHubClient {
         sort: Option<&str>,
         order: Option<&str>,
     ) -> Result<SearchResult<MinimalRepo>, ureq::Error> {
-        let mut path = format!("/search/repositories?q={q}&page={page}&per_page={}", per_page.min(100));
+        let mut path = format!(
+            "/search/repositories?q={q}&page={page}&per_page={}",
+            per_page.min(100)
+        );
         if let Some(s) = sort {
             path.push_str(&format!("&sort={s}"));
         }
@@ -112,7 +126,10 @@ impl GitHubClient {
         page: u32,
         per_page: u32,
     ) -> Result<SearchResult<CodeMatch>, ureq::Error> {
-        let path = format!("/search/code?q={q}&page={page}&per_page={}", per_page.min(100));
+        let path = format!(
+            "/search/code?q={q}&page={page}&per_page={}",
+            per_page.min(100)
+        );
         self.get(&path)
     }
 
@@ -125,7 +142,10 @@ impl GitHubClient {
         sort: Option<&str>,
         order: Option<&str>,
     ) -> Result<SearchResult<IssueItem>, ureq::Error> {
-        let mut path = format!("/search/issues?q={q}&page={page}&per_page={}", per_page.min(100));
+        let mut path = format!(
+            "/search/issues?q={q}&page={page}&per_page={}",
+            per_page.min(100)
+        );
         if let Some(s) = sort {
             path.push_str(&format!("&sort={s}"));
         }
@@ -169,7 +189,12 @@ impl GitHubClient {
     }
 
     /// Get a single issue.
-    pub fn get_issue(&self, owner: &str, repo: &str, number: u64) -> Result<IssueItem, ureq::Error> {
+    pub fn get_issue(
+        &self,
+        owner: &str,
+        repo: &str,
+        number: u64,
+    ) -> Result<IssueItem, ureq::Error> {
         let path = format!("/repos/{owner}/{repo}/issues/{number}");
         self.get(&path)
     }
@@ -255,7 +280,12 @@ impl GitHubClient {
             "PUT" => self.agent.put(&url),
             "PATCH" => self.agent.patch(&url),
             "DELETE" => self.agent.delete(&url),
-            _ => return Err(ureq::Error::Status(405, ureq::Response::new(405, "Method Not Allowed", "")?)),
+            _ => {
+                return Err(ureq::Error::Status(
+                    405,
+                    ureq::Response::new(405, "Method Not Allowed", "")?,
+                ))
+            }
         };
 
         let req = req
@@ -265,7 +295,8 @@ impl GitHubClient {
 
         if let Some(b) = body {
             let json = serde_json::to_string(b).unwrap_or_default();
-            let resp = req.set("Content-Type", "application/json")
+            let resp = req
+                .set("Content-Type", "application/json")
                 .send_string(&json)?;
             Ok(resp.into_json()?)
         } else {
